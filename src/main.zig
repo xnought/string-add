@@ -1,15 +1,13 @@
 const std = @import("std");
 
-const DigitError = error{NaN};
-
 fn isDigit(char: u8) bool {
     return (char == '0') or (char == '1') or (char == '2') or (char == '3') or
         (char == '4') or (char == '5') or (char == '6') or (char == '7') or (char == '8') or (char == '9');
 }
-fn isIntegerStr(str: []const u8) DigitError!void {
+fn isIntegerStr(str: []const u8) !void {
     for (str) |char| {
         if (!isDigit(char)) {
-            return DigitError.NaN;
+            return error.NaN;
         }
     }
 }
