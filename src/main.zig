@@ -32,13 +32,34 @@ fn toIntArr(str: []const u8, allocator: std.mem.Allocator) !std.ArrayList(u8) {
     return list;
 }
 
+fn padLeading0s(a: *std.ArrayList(u8), b: *std.ArrayList(u8)) !void {
+    // find which ones is longer
+    if (a.*.items.len == b.*.items.len) {
+        return;
+    } else if (a.*.items.len > b.*.items.len) {
+        // a is longer, so pad 0s to b
+        for (b.*.items.len..a.*.items.len) |_| {
+            try b.*.insert(0, 0);
+        }
+    } else {
+        // b is longer, so pad 0s to a
+        for (a.*.items.len..b.*.items.len) |_| {
+            try a.*.insert(0, 0);
+        }
+    }
+}
+
 fn stringAdd(str_a: []const u8, str_b: []const u8, allocator: std.mem.Allocator) ![]const u8 {
-    const a = try toIntArr(str_a, allocator);
-    const b = try toIntArr(str_b, allocator);
+    var a = try toIntArr(str_a, allocator);
+    var b = try toIntArr(str_b, allocator);
     defer a.deinit();
     defer b.deinit();
 
-    print("{any} {any}", .{ a.items, b.items });
+    // if a is 1000 and b is 1
+    // this func will convert b to 0001
+    try padLeading0s(&a, &b);
+
+    print("{any} {any}", .{ a, b });
 
     // now do the string addition
     // TODO: do with carries
@@ -55,7 +76,7 @@ fn stringAdd(str_a: []const u8, str_b: []const u8, allocator: std.mem.Allocator)
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     const str_a = "12341";
-    const str_b = "00019";
+    const str_b = "19";
     const res = try stringAdd(str_a, str_b, allocator);
     print("{s}", .{res});
 }
