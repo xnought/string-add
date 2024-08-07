@@ -1,10 +1,4 @@
 const std = @import("std");
-const print = std.debug.print;
-
-fn isDigit(char: u8) bool {
-    return (char == '0') or (char == '1') or (char == '2') or (char == '3') or
-        (char == '4') or (char == '5') or (char == '6') or (char == '7') or (char == '8') or (char == '9');
-}
 
 fn parseDigit(char: u8) error{NaN}!u8 {
     return switch (char) {
@@ -49,34 +43,64 @@ fn padLeading0s(a: *std.ArrayList(u8), b: *std.ArrayList(u8)) !void {
     }
 }
 
-fn stringAdd(str_a: []const u8, str_b: []const u8, allocator: std.mem.Allocator) ![]const u8 {
+fn digitAdd(digit_a: u8, digit_b: u8, carry: u8) struct { add: u8, carry: u8 } {
+    const out = digit_a + digit_b + carry;
+    const exceeds = out > 9;
+    if (!exceeds) {
+        return .{ .add = out, .carry = 0 };
+    } else {
+        return .{ .add = out - 10, .carry = 1 };
+    }
+}
+
+fn stringAdd(str_a: []const u8, str_b: []const u8, allocator: std.mem.Allocator) !std.ArrayList(u8) {
     var a = try toIntArr(str_a, allocator);
     var b = try toIntArr(str_b, allocator);
+    var c = std.ArrayList(u8).init(allocator); // c = a + b
     defer a.deinit();
     defer b.deinit();
 
     // if a is 1000 and b is 1
     // this func will convert b to 0001
+    // a.items.len = b.items.len after
     try padLeading0s(&a, &b);
 
-    print("{any} {any}", .{ a, b });
+    // do adds for each digit and bring the carry each time
+    var i: usize = a.items.len;
+    var carry: u8 = 0;
+    while (i > 0) {
+        i -= 1;
+        const out = digitAdd(a.items[i], b.items[i], carry);
+        carry = out.carry;
+        try c.insert(0, out.add);
+    }
+    // if the right leading has carry
+    if (carry == 1) {
+        try c.insert(0, 1);
+    }
 
-    // now do the string addition
-    // TODO: do with carries
-    // var a_i: usize = str_a.len;
-    // while (a_i > 0) {
-    //     a_i -= 1;
-
-    //     print("{}\n", .{a_i});
-    // }
-
-    return "Hello!";
+    return c;
 }
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    const str_a = "12341";
-    const str_b = "19";
-    const res = try stringAdd(str_a, str_b, allocator);
-    print("{s}", .{res});
+
+    // read in two numbers provided
+    // i.e. ./str-add 15 20
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+    if (args.len < 3) {
+        return error.MustProvideTwoNumbers;
+    }
+    const str_a = args[1];
+    const str_b = args[2];
+
+    const res = try stringAdd(str_b, str_a, allocator);
+    defer res.deinit();
+
+    // result  to stdout
+    const outw = std.io.getStdOut().writer();
+    for (res.items) |digit| {
+        try outw.print("{}", .{digit});
+    }
 }
