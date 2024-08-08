@@ -1,6 +1,10 @@
 const std = @import("std");
 
-fn parseDigit(char: u8) error{NaN}!u8 {
+const Digit = u5;
+const CarryDigit = u1;
+const DigitsArray = std.ArrayList(Digit);
+
+fn parseDigit(char: u8) error{NaN}!Digit {
     return switch (char) {
         '0' => 0,
         '1' => 1,
@@ -16,8 +20,8 @@ fn parseDigit(char: u8) error{NaN}!u8 {
     };
 }
 
-fn toIntArr(str: []const u8, allocator: std.mem.Allocator) !std.ArrayList(u8) {
-    var list = std.ArrayList(u8).init(allocator);
+fn toDigitsArray(str: []const u8, allocator: std.mem.Allocator) !DigitsArray {
+    var list = DigitsArray.init(allocator);
     errdefer list.deinit();
     for (0..str.len) |i| {
         const num = try parseDigit(str[i]);
@@ -26,7 +30,7 @@ fn toIntArr(str: []const u8, allocator: std.mem.Allocator) !std.ArrayList(u8) {
     return list;
 }
 
-fn padLeading0s(a: *std.ArrayList(u8), b: *std.ArrayList(u8)) !void {
+fn padLeading0s(a: *DigitsArray, b: *DigitsArray) !void {
     // find which ones is longer
     if (a.*.items.len == b.*.items.len) {
         return;
@@ -43,20 +47,21 @@ fn padLeading0s(a: *std.ArrayList(u8), b: *std.ArrayList(u8)) !void {
     }
 }
 
-fn digitAdd(digit_a: u8, digit_b: u8, carry: u8) struct { add: u8, carry: u8 } {
-    const out = digit_a + digit_b + carry;
+fn digitAdd(digit_a: Digit, digit_b: Digit, carry: CarryDigit) struct { add: Digit, carry: CarryDigit } {
+    // total expression will atleast be < 2^5
+    const out: Digit = digit_a + digit_b + carry;
     const exceeds = out > 9;
     if (!exceeds) {
         return .{ .add = out, .carry = 0 };
     } else {
-        return .{ .add = out - 10, .carry = 1 };
+        return .{ .add = out, .carry = 1 };
     }
 }
 
-fn stringAdd(str_a: []const u8, str_b: []const u8, allocator: std.mem.Allocator) !std.ArrayList(u8) {
-    var a = try toIntArr(str_a, allocator);
-    var b = try toIntArr(str_b, allocator);
-    var c = std.ArrayList(u8).init(allocator); // c = a + b
+fn stringAdd(str_a: []const u8, str_b: []const u8, allocator: std.mem.Allocator) !DigitsArray {
+    var a = try toDigitsArray(str_a, allocator);
+    var b = try toDigitsArray(str_b, allocator);
+    var c = DigitsArray.init(allocator); // c = a + b
     defer a.deinit();
     defer b.deinit();
 
@@ -67,7 +72,7 @@ fn stringAdd(str_a: []const u8, str_b: []const u8, allocator: std.mem.Allocator)
 
     // do adds for each digit and bring the carry each time
     var i: usize = a.items.len;
-    var carry: u8 = 0;
+    var carry: CarryDigit = 0;
     while (i > 0) {
         i -= 1;
         const out = digitAdd(a.items[i], b.items[i], carry);
